@@ -1,6 +1,5 @@
 package com.ns.wallflow.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +9,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.ns.wallflow.model.AppTheme
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -37,18 +37,30 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun WallFlowTheme(
+    appTheme: AppTheme = AppTheme.SYSTEM,
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val useDarkTheme = when (appTheme) {
+        AppTheme.DARK -> true
+        AppTheme.LIGHT -> false
+        AppTheme.SYSTEM, AppTheme.DYNAMIC -> darkTheme
+    }
+
+    val useDynamicColor = when (appTheme) {
+        AppTheme.DYNAMIC -> true
+        AppTheme.SYSTEM, AppTheme.LIGHT, AppTheme.DARK -> false
+    }
+
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (useDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        darkTheme -> DarkColorScheme
+        useDarkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
 

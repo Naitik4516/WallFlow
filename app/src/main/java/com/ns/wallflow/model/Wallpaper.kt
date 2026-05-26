@@ -1,7 +1,7 @@
 package com.ns.wallflow.model
 
-import kotlinx.serialization.Serializable
 import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
 
 
 @Serializable
@@ -12,4 +12,6 @@ data class Wallpaper(
     val addedAt: Long = System.currentTimeMillis(),
     val timePhase: WallpaperTimePhase,
     val brightness: WallpaperBrightness,
+    val isFavourite: Boolean = false,
+    val originalUri: String = ""
 ): NavKey

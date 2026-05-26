@@ -1,10 +1,10 @@
 package com.ns.wallflow.data
 
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.Embedded
 import androidx.room.Relation
 import com.ns.wallflow.model.Wallpaper
 import com.ns.wallflow.model.WallpaperBrightness
@@ -35,6 +35,8 @@ data class WallpaperEntity(
     val timePhaseTag: String, // "MORNING", "AFTERNOON", "EVENING", "NIGHT"
     val brightnessTag: String, // "LIGHT", "DARK"
     val collectionId: Int? = null,
+    val isFavourite: Boolean = false,
+    val originalUri: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -54,6 +56,8 @@ fun WallpaperEntity.toWallpaper(collectionName: String? = null): Wallpaper {
         collection = collectionName,
         addedAt = this.createdAt,
         timePhase = WallpaperTimePhase.valueOf(this.timePhaseTag),
-        brightness = WallpaperBrightness.valueOf(this.brightnessTag)
+        brightness = WallpaperBrightness.valueOf(this.brightnessTag),
+        isFavourite = this.isFavourite,
+        originalUri = this.originalUri
     )
 }

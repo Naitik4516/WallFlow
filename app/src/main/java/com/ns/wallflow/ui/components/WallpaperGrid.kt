@@ -5,7 +5,6 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
@@ -37,8 +36,9 @@ fun WallpaperGrid(
             key = { _, wallpaper -> wallpaper.id }) { index, wallpaper ->
             val isSelected = selectedItemIds.contains(wallpaper.id)
             SelectableGridItem(
-                isSelected,
-                selectionMode,
+                isSelected = isSelected,
+                isSelectionMode = selectionMode,
+                modifier = Modifier.animateItem(),
                 onCheckedChange = {
                     if (selectionMode) {
                         updateSelectedItemIds(
@@ -54,7 +54,6 @@ fun WallpaperGrid(
                 WallpaperCard(
                     wallpaper = wallpaper,
                     columnIndex = index % 2,
-                    modifier = Modifier.padding(top = if (index == 1) 48.dp else 0.dp),
                     sharedTransitionScope = sharedTransitionScope,
                     animatedVisibilityScope = animatedVisibilityScope,
                     onClick = { onWallpaperClick(wallpaper) },

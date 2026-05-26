@@ -9,10 +9,7 @@ import com.ns.wallflow.data.AppDatabase
 import com.ns.wallflow.data.CollectionEntity
 import com.ns.wallflow.model.Collection
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class CollectionsViewModel(application: Application) : AndroidViewModel(application) {
@@ -52,6 +49,28 @@ class CollectionsViewModel(application: Application) : AndroidViewModel(applicat
             }
         }
     }
+
+    fun deleteCollections(ids: Set<Int>) {
+        viewModelScope.launch {
+            collectionDao.deleteCollectionsByIds(ids.toList())
+            loadCollections()
+        }
+    }
+
+    fun renameCollection(id: Int, newName: String) {
+        viewModelScope.launch {
+            if (newName.isNotBlank()) {
+                collectionDao.renameCollection(id, newName)
+                loadCollections()
+            }
+        }
+    }
+
+    fun addWallpapersToCollection(wallpaperIds: Set<Int>, collectionId: Int) {
+        viewModelScope.launch {
+            collectionDao.assignWallpapersToCollection(wallpaperIds.toList(), collectionId)
+        }
+    }
 }
 
 class CollectionsViewModelFactory(
@@ -65,4 +84,3 @@ class CollectionsViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
-

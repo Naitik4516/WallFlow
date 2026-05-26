@@ -1,6 +1,10 @@
 package com.ns.wallflow.ui.navigation
 
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -14,8 +18,8 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
-import com.ns.wallflow.ui.screens.CollectionsScreen
 import com.ns.wallflow.ui.screens.CollectionWallpapersScreen
+import com.ns.wallflow.ui.screens.CollectionsScreen
 import com.ns.wallflow.ui.screens.HomeScreen
 import com.ns.wallflow.ui.screens.PreviewScreen
 import com.ns.wallflow.ui.screens.SettingsScreen
@@ -39,7 +43,9 @@ fun AppNavigationHost() {
             }
         }
     ) { innerPadding ->
-        Surface(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+        Surface(modifier = Modifier
+            .padding(innerPadding)
+            .fillMaxSize()) {
             SharedTransitionLayout {
                 NavDisplay(
                     backStack = backStack,
@@ -49,6 +55,24 @@ fun AppNavigationHost() {
                         rememberSaveableStateHolderNavEntryDecorator(),
                         rememberViewModelStoreNavEntryDecorator()
                     ),
+                    transitionSpec = {
+                        slideInHorizontally(
+                            animationSpec = tween(300),
+                            initialOffsetX = { fullWidth -> fullWidth }
+                        ) togetherWith slideOutHorizontally(
+                            animationSpec = tween(300),
+                            targetOffsetX = { fullWidth -> -fullWidth }
+                        )
+                    },
+                    popTransitionSpec = {
+                        slideInHorizontally(
+                            animationSpec = tween(300),
+                            initialOffsetX = { fullWidth -> -fullWidth }
+                        ) togetherWith slideOutHorizontally(
+                            animationSpec = tween(300),
+                            targetOffsetX = { fullWidth -> fullWidth }
+                        )
+                    },
                     entryProvider = entryProvider {
                         entry<Screen.Home> {
                             HomeScreen(

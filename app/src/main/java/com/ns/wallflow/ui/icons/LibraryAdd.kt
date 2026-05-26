@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
 @Suppress("CheckReturnValue")
-public val LibraryAdd: ImageVector
+val LibraryAdd: ImageVector
     get() {
         if (_library_add != null) {
             return _library_add!!
@@ -33,7 +33,7 @@ public val LibraryAdd: ImageVector
                         strokeLineCap = StrokeCap.Butt,
                         strokeLineJoin = StrokeJoin.Bevel,
                         strokeLineMiter = 1f,
-                        pathFillType = PathFillType.Companion.NonZero,
+                        pathFillType = PathFillType.NonZero,
                     ) {
                         moveTo(14.71f, 13.71f)
                         quadTo(15f, 13.43f, 15f, 13f)

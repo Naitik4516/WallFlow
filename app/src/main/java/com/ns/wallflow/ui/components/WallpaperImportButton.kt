@@ -10,34 +10,22 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.get
 import androidx.core.graphics.scale
 import com.ns.wallflow.data.AppDatabase
 import com.ns.wallflow.data.WallpaperDao
 import com.ns.wallflow.data.WallpaperEntity
+import com.ns.wallflow.data.settingsDataStore
 import com.ns.wallflow.model.WallpaperBrightness
 import com.ns.wallflow.model.WallpaperTimePhase
 import com.ns.wallflow.ui.icons.add
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -89,37 +77,60 @@ fun WallpaperImportBtn(
 suspend fun saveAndClassifyWallpaper(context: Context, uri: Uri, dao: WallpaperDao, collectionId: Int? = null) {
     withContext(Dispatchers.IO) {
         try {
+            val settings = context.settingsDataStore.data.first()
+            val optimize = settings.optimizeWallpaper
+            val autoAddTags = settings.autoAddTags
+
             // 1. Decode URI to Bitmap safely
             val inputStream = context.contentResolver.openInputStream(uri)
             val originalBitmap = BitmapFactory.decodeStream(inputStream) ?: return@withContext
             inputStream?.close()
 
             // 2. Classify image across both levels at once
-            val tags = analyzeAndExtractTags(originalBitmap)
+            val tags = if (autoAddTags) {
+                analyzeAndExtractTags(originalBitmap)
+            } else {
+                WallpaperTags(WallpaperTimePhase.MORNING, WallpaperBrightness.LIGHT)
+            }
             Log.d("WallpaperImport", "Classified -> TimePhase: ${tags.timePhase}, Tone: ${tags.brightness}")
 
-            // 3. Setup the private internal storage directory path
+            // 3. Prevent duplicate imports based on uri
+            val existingCount = dao.getCountByOriginalUri(uri.toString())
+            if (existingCount > 0) {
+                Log.d("WallpaperImport", "Skipped duplicate import: $uri")
+                return@withContext
+            }
+
+            // 4. Setup the private internal storage directory path
             val targetDirectory = File(context.filesDir, "wallpapers").apply {
                 if (!exists()) mkdirs()
             }
             val destinationFile = File(targetDirectory, "wp_${UUID.randomUUID()}.webp")
 
-            // 4. Compress to lossy WebP at 90% Quality
-            FileOutputStream(destinationFile).use { outputStream ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    originalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 90, outputStream)
-                } else {
-                    @Suppress("DEPRECATION")
-                    originalBitmap.compress(Bitmap.CompressFormat.WEBP, 90, outputStream)
+            // 5. Compress to lossy WebP at 90% Quality or copy original
+            if (optimize) {
+                FileOutputStream(destinationFile).use { outputStream ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        originalBitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 90, outputStream)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        originalBitmap.compress(Bitmap.CompressFormat.WEBP, 90, outputStream)
+                    }
+                }
+            } else {
+                // If not optimizing, save as PNG at 100% to preserve quality without WebP optimizations
+                FileOutputStream(destinationFile).use { outputStream ->
+                    originalBitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
                 }
             }
 
-            // 5. Insert rows directly into Room with both tags mapped
+            // 6. Insert rows directly into Room with both tags mapped
             val entity = WallpaperEntity(
                 filePath = destinationFile.absolutePath,
                 timePhaseTag = tags.timePhase.name,
                 brightnessTag = tags.brightness.name,
-                collectionId = collectionId
+                collectionId = collectionId,
+                originalUri = uri.toString()
             )
             dao.insertWallpaper(entity)
 

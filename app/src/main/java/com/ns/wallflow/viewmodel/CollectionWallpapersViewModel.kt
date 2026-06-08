@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.ns.wallflow.data.AppDatabase
 import com.ns.wallflow.data.toWallpaper
 import com.ns.wallflow.model.Wallpaper
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -17,7 +18,7 @@ class CollectionWallpapersViewModel(
     private val collectionId: Int,
     private val collectionName: String
 ) : AndroidViewModel(application) {
-    private val db = AppDatabase.getDatabase(application, viewModelScope)
+    private val db = AppDatabase.getDatabase(application)
     private val collectionDao = db.collectionDao()
     private val wallpaperDao = db.wallpaperDao()
 
@@ -27,18 +28,23 @@ class CollectionWallpapersViewModel(
     private val _allOtherWallpapers = MutableStateFlow<List<Wallpaper>>(emptyList())
     val allOtherWallpapers: StateFlow<List<Wallpaper>> = _allOtherWallpapers
 
+    private var favouritesJob: Job? = null
+
     init {
         loadWallpapers()
         loadOtherWallpapers()
     }
 
     fun loadWallpapers() {
-        viewModelScope.launch {
-            if (collectionId == -1) {
+        favouritesJob?.cancel()
+        if (collectionId == -1) {
+            favouritesJob = viewModelScope.launch {
                 wallpaperDao.getFavouriteWallpapersFlow().collect { entities ->
                     _wallpapers.value = entities.map { it.toWallpaper("Favourites") }
                 }
-            } else {
+            }
+        } else {
+            viewModelScope.launch {
                 val cw = collectionDao.getCollectionWithWallpapers(collectionId)
                 val mapped = cw?.wallpapers?.map { it.toWallpaper(collectionName) } ?: emptyList()
                 _wallpapers.value = mapped
@@ -64,13 +70,9 @@ class CollectionWallpapersViewModel(
     fun removeWallpapersFromCollection(wallpaperIds: Set<Int>, collectionId: Int) {
         viewModelScope.launch {
             if (collectionId == -1) {
-                wallpaperIds.forEach { id ->
-                    wallpaperDao.updateFavouriteStatus(id, false)
-                }
+                wallpaperDao.updateFavouriteStatusForIds(wallpaperIds.toList(), false)
             } else {
-                wallpaperIds.forEach { id ->
-                    collectionDao.assignWallpaperToCollection(id, null)
-                }
+                collectionDao.assignWallpapersToCollection(wallpaperIds.toList(), null)
             }
             loadWallpapers()
             loadOtherWallpapers()
@@ -80,13 +82,9 @@ class CollectionWallpapersViewModel(
     fun addWallpapersToCollection(wallpaperIds: Set<Int>) {
         viewModelScope.launch {
             if (collectionId == -1) {
-                wallpaperIds.forEach { id ->
-                    wallpaperDao.updateFavouriteStatus(id, true)
-                }
+                wallpaperDao.updateFavouriteStatusForIds(wallpaperIds.toList(), true)
             } else {
-                wallpaperIds.forEach { id ->
-                    collectionDao.assignWallpaperToCollection(id, collectionId)
-                }
+                collectionDao.assignWallpapersToCollection(wallpaperIds.toList(), collectionId)
             }
             loadWallpapers()
             loadOtherWallpapers()

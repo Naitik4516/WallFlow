@@ -1,17 +1,21 @@
 package com.ns.wallflow.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,15 +26,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import com.ns.wallflow.R
 import com.ns.wallflow.model.Collection
+import com.ns.wallflow.ui.icons.wallpaper
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -39,7 +42,7 @@ fun CollectionCard(
     modifier: Modifier = Modifier
         .padding(16.dp)
         .fillMaxWidth()
-        .height(237.dp),
+        .height(200.dp),
     isSelected: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
@@ -58,22 +61,45 @@ fun CollectionCard(
                     onLongClick = onLongClick
                 )
         ) {
-            if (collection.coverImagePath.startsWith("file:///android_asset/") || collection.coverImagePath.isEmpty()) {
-                Image(
-                    painterResource(R.drawable.collection_placeholder), // Fallback/default image
+            if (collection.coverImagesPaths.isNullOrEmpty()) {
+                Icon(
+                    wallpaper,
                     contentDescription = "Collection Image",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(80.dp)
                 )
             } else {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(collection.coverImagePath)
-                        .build(),
-                    contentDescription = "Collection Image",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                Row {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(collection.coverImagesPaths[0])
+                            .build(),
+                        contentDescription = "Collection Image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    )
+                    if (collection.coverImagesPaths.size > 1) {
+                        Column(modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()) {
+                            for (i in 1 until collection.coverImagesPaths.size) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(collection.coverImagesPaths[i])
+                                        .build(),
+                                    contentDescription = "Collection Image",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             Box(

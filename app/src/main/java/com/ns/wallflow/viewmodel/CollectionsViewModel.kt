@@ -13,31 +13,49 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class CollectionsViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = AppDatabase.getDatabase(application, viewModelScope)
+    private val db = AppDatabase.getDatabase(application)
     private val collectionDao = db.collectionDao()
+    private val wallpaperDao = db.wallpaperDao()
 
     private val _collections = MutableStateFlow<List<Collection>>(emptyList())
     val collections: StateFlow<List<Collection>> = _collections
 
+    private val _favourites = MutableStateFlow<Collection?>(null)
+    val favourites: StateFlow<Collection?> = _favourites
+
     init {
-        loadCollections()
+        observeCollections()
+        observeFavourites()
     }
 
-    fun loadCollections() {
+    private fun observeCollections() {
         viewModelScope.launch {
-            val entities = collectionDao.getAllCollections()
-            val mapped = entities.map { entity ->
-                val cw = collectionDao.getCollectionWithWallpapers(entity.id)
-                val wallpapers = cw?.wallpapers ?: emptyList()
-                val coverPath = wallpapers.firstOrNull()?.filePath ?: ""
-                Collection(
-                    id = entity.id,
-                    name = entity.name,
-                    totalWallpapers = wallpapers.size,
-                    coverImagePath = coverPath
+            collectionDao.getCollectionsWithWallpapersFlow().collect { collectionsWithWallpapers ->
+                _collections.value = collectionsWithWallpapers.map { entry ->
+                    val wallpapers = entry.wallpapers
+                    val coverPaths = wallpapers.take(3).map { it.filePath }
+                    Collection(
+                        id = entry.collection.id,
+                        name = entry.collection.name,
+                        totalWallpapers = wallpapers.size,
+                        coverPaths
+                    )
+                }
+            }
+        }
+    }
+
+    private fun observeFavourites() {
+        viewModelScope.launch {
+            wallpaperDao.getFavouriteWallpapersFlow().collect { favWallpapers ->
+                val coverPaths = favWallpapers.take(3).map { it.filePath }
+                _favourites.value = Collection(
+                    id = -1,
+                    name = "Favourites",
+                    totalWallpapers = favWallpapers.size,
+                    coverPaths
                 )
             }
-            _collections.value = mapped
         }
     }
 
@@ -45,7 +63,6 @@ class CollectionsViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             if (name.isNotBlank()) {
                 collectionDao.createCollection(CollectionEntity(name = name))
-                loadCollections()
             }
         }
     }
@@ -53,7 +70,6 @@ class CollectionsViewModel(application: Application) : AndroidViewModel(applicat
     fun deleteCollections(ids: Set<Int>) {
         viewModelScope.launch {
             collectionDao.deleteCollectionsByIds(ids.toList())
-            loadCollections()
         }
     }
 
@@ -61,7 +77,6 @@ class CollectionsViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             if (newName.isNotBlank()) {
                 collectionDao.renameCollection(id, newName)
-                loadCollections()
             }
         }
     }

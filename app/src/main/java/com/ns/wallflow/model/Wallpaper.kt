@@ -10,8 +10,7 @@ data class Wallpaper(
     val filePath: String,
     val collection: String? = null,
     val addedAt: Long = System.currentTimeMillis(),
-    val timePhase: WallpaperTimePhase,
-    val brightness: WallpaperBrightness,
+    val tags: List<String> = emptyList(),
     val isFavourite: Boolean = false,
     val originalUri: String = ""
 ): NavKey

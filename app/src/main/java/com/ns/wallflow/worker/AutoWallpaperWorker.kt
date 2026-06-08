@@ -13,7 +13,6 @@ import com.ns.wallflow.model.AutoWallpaperSettings
 import com.ns.wallflow.model.WallpaperMode
 import com.ns.wallflow.model.WallpaperTarget
 import com.ns.wallflow.model.WallpaperType
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.first
 import java.util.Calendar
 
@@ -24,12 +23,20 @@ class AutoWallpaperWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            val settings = ctx.settingsDataStore.data.first().autoWallpaper
+            val configType = inputData.getString("config_type") ?: "GLOBAL"
+            val appSettings = ctx.settingsDataStore.data.first()
+
+            val settings = when (configType) {
+                "HOME" -> appSettings.homeAutoWallpaper
+                "LOCK" -> appSettings.lockAutoWallpaper
+                else -> appSettings.autoWallpaper
+            }
+
             if (!settings.isEnabled) return Result.success()
 
             val wallpaperTypeToApply: WallpaperType = determineWallpaperType(settings)
 
-            val dao = AppDatabase.getDatabase(ctx, GlobalScope).wallpaperDao()
+            val dao = AppDatabase.getDatabase(ctx.applicationContext).wallpaperDao()
             val wallpaperFile = when (wallpaperTypeToApply) {
                 is WallpaperType.Any -> dao.getRandomWallpaper()
                 is WallpaperType.Collection -> dao.getRandomWallpaperFromCollection(

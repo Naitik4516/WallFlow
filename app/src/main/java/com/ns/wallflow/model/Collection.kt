@@ -7,5 +7,5 @@ data class Collection(
     val id: Int,
     val name: String,
     val totalWallpapers: Int,
-    val coverImagePath: String
+    val coverImagesPaths: List<String>? = null
 )

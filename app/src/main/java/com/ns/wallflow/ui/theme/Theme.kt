@@ -9,6 +9,9 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.ns.wallflow.model.AppTheme
 
 private val DarkColorScheme = darkColorScheme(
@@ -35,12 +38,18 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+val AppTypography = androidx.compose.material3.Typography(
+    titleLarge = TextStyle(
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 36.sp
+    ),
+)
+
+
 @Composable
 fun WallFlowTheme(
     appTheme: AppTheme = AppTheme.SYSTEM,
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val useDarkTheme = when (appTheme) {
@@ -66,7 +75,7 @@ fun WallFlowTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = AppTypography,
         content = content
     )
 }

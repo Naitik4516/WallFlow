@@ -29,20 +29,14 @@ interface WallpaperDao {
     @Query("SELECT * FROM wallpapers WHERE id = :wallpaperId")
     suspend fun getWallpaperById(wallpaperId: Int): WallpaperEntity?
 
-    @Query("SELECT * FROM wallpapers WHERE brightnessTag = :brightness ORDER BY createdAt DESC")
-    fun getWallpapersByBrightnessFlow(brightness: String): kotlinx.coroutines.flow.Flow<List<WallpaperEntity>>
+    @Query("SELECT * FROM wallpapers WHERE tags LIKE '%' || :tag || '%' ORDER BY createdAt DESC")
+    fun getWallpapersByTagFlow(tag: String): kotlinx.coroutines.flow.Flow<List<WallpaperEntity>>
 
-    @Query("SELECT * FROM wallpapers WHERE timePhaseTag = :phase ORDER BY createdAt DESC")
-    fun getWallpapersByTimePhaseFlow(phase: String): kotlinx.coroutines.flow.Flow<List<WallpaperEntity>>
+    @Query("SELECT * FROM wallpapers WHERE tags LIKE '%' || :tag || '%' ORDER BY RANDOM() LIMIT 1")
+    suspend fun getRandomWallpaperByTag(tag: String): WallpaperEntity?
 
-    @Query("SELECT * FROM wallpapers WHERE brightnessTag = :brightness ORDER BY RANDOM() LIMIT 1")
-    suspend fun getRandomWallpaperByBrightness(brightness: String): WallpaperEntity?
-
-    @Query("SELECT * FROM wallpapers WHERE timePhaseTag = :phase ORDER BY RANDOM() LIMIT 1")
-    suspend fun getRandomWallpaperByTimePhase(phase: String): WallpaperEntity?
-
-    @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId AND timePhaseTag = :phase ORDER BY RANDOM() LIMIT 1")
-    suspend fun getRandomWallpaperFromCollection(collectionId: Int, phase: String): WallpaperEntity?
+    @Query("SELECT * FROM wallpapers WHERE collectionId = :collectionId AND tags LIKE '%' || :tag || '%' ORDER BY RANDOM() LIMIT 1")
+    suspend fun getRandomWallpaperFromCollection(collectionId: Int, tag: String): WallpaperEntity?
 
     @Query("DELETE FROM wallpapers WHERE id = :wallpaperId")
     suspend fun deleteWallpaperById(wallpaperId: Int)
@@ -55,6 +49,12 @@ interface WallpaperDao {
 
     @Query("UPDATE wallpapers SET isFavourite = :isFav WHERE id = :wallpaperId")
     suspend fun updateFavouriteStatus(wallpaperId: Int, isFav: Boolean)
+
+    @Query("UPDATE wallpapers SET isFavourite = :isFav WHERE id IN (:wallpaperIds)")
+    suspend fun updateFavouriteStatusForIds(wallpaperIds: List<Int>, isFav: Boolean)
+
+    @Query("UPDATE wallpapers SET tags = :tags WHERE id = :wallpaperId")
+    suspend fun updateWallpaperTags(wallpaperId: Int, tags: String)
 
     @Query("SELECT * FROM wallpapers WHERE isFavourite = 1 ORDER BY createdAt")
     fun getFavouriteWallpapersFlow(): kotlinx.coroutines.flow.Flow<List<WallpaperEntity>>
@@ -76,8 +76,8 @@ interface CollectionDao {
     suspend fun assignWallpapersToCollection(wallpaperIds: List<Int>, collectionId: Int?)
 
     @Transaction
-    @Query("SELECT * FROM collections WHERE id = :collectionId")
-    suspend fun getCollectionWithWallpapers(collectionId: Int): CollectionWithWallpapers?
+    @Query("SELECT * FROM collections ORDER BY createdAt")
+    fun getCollectionsWithWallpapersFlow(): kotlinx.coroutines.flow.Flow<List<CollectionWithWallpapers>>
 
     @Query("DELETE FROM collections WHERE id = :collectionId")
     suspend fun deleteCollectionById(collectionId: Int)
@@ -87,4 +87,8 @@ interface CollectionDao {
 
     @Query("UPDATE collections SET name = :newName WHERE id = :collectionId")
     suspend fun renameCollection(collectionId: Int, newName: String)
+
+    @Transaction
+    @Query("SELECT * FROM collections WHERE id = :collectionId")
+    suspend fun getCollectionWithWallpapers(collectionId: Int): CollectionWithWallpapers?
 }

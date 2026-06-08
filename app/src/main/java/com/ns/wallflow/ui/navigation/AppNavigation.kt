@@ -5,13 +5,16 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -30,6 +33,8 @@ fun AppNavigationHost() {
     val navigator = remember(backStack) { AppNavigator(backStack) }
     val currentScreen = backStack.lastOrNull()
 
+    val colors = MaterialTheme.colorScheme
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
@@ -45,6 +50,11 @@ fun AppNavigationHost() {
     ) { innerPadding ->
         Surface(modifier = Modifier
             .padding(innerPadding)
+            .background(
+                Brush.verticalGradient(
+                    listOf(colors.primary, colors.secondary)
+                )
+            )
             .fillMaxSize()) {
             SharedTransitionLayout {
                 NavDisplay(

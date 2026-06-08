@@ -2,24 +2,33 @@ package com.ns.wallflow.ui.components
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -40,7 +49,8 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.ns.wallflow.data.AppDatabase
 import com.ns.wallflow.model.Wallpaper
-import com.ns.wallflow.ui.icons.Favorite
+import com.ns.wallflow.ui.icons.favorite
+import com.ns.wallflow.ui.icons.favorite_filled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -58,26 +68,40 @@ fun WallpaperCard(
     wallpaper: Wallpaper,
     modifier: Modifier = Modifier,
     columnIndex: Int = 0,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onClick: (Rect) -> Unit,
     onLongClick: ((Wallpaper) -> Unit)? = null
 ) {
     val windowInfo = LocalWindowInfo.current
     val screenHeight = windowInfo.containerSize.height.toFloat()
 
+    val cardHeight = remember(wallpaper.id) { Random.nextInt(250, 320) }
+
     var parallaxOffset by remember { mutableFloatStateOf(0f) }
     val boundsHolder = remember { UnreactiveBoundsHolder() }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val cardInteractionSource = remember { MutableInteractionSource() }
 
-    with(sharedTransitionScope) {
+    val cardContent = @Composable {
         Card(
             modifier = modifier
                 .fillMaxWidth()
+                .then(
+                    if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        with(sharedTransitionScope) {
+                            with(animatedVisibilityScope) {
+                                Modifier.animateEnterExit(
+                                    enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { it / 2 },
+                                    exit = fadeOut(tween(600)) + slideOutVertically(tween(600)) { -it / 2 }
+                                )
+                            }
+                        }
+                    } else Modifier
+                )
                 .onGloballyPositioned { coordinates ->
-                    // Save the rect data quietly in our plain object wrapper
                     val currentBounds = coordinates.boundsInWindow()
                     boundsHolder.rect = currentBounds
 
@@ -92,6 +116,8 @@ fun WallpaperCard(
                     parallaxOffset = curvedRatio * (height * 0.15f) * columnSpeedMultiplier
                 }
                 .combinedClickable(
+                    interactionSource = cardInteractionSource,
+                    indication = ripple(),
                     onClick = { onClick(boundsHolder.rect) },
                     onLongClick = { onLongClick?.invoke(wallpaper) }
                 ),
@@ -99,54 +125,80 @@ fun WallpaperCard(
             shape = RoundedCornerShape(16.dp),
         ) {
             Box {
+                var isLiked by remember(wallpaper.isFavourite) { mutableStateOf(wallpaper.isFavourite) }
+
                 AsyncImage(
                     model = wallpaper.filePath,
                     contentDescription = "Wallpaper Image",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(Random.nextInt(280, 350).dp)
+                        .height(cardHeight.dp)
                         .graphicsLayer {
-                            // State read happens safely entirely inside the isolated draw layer
                             translationY = parallaxOffset
                             scaleX = 1.3f
                             scaleY = 1.3f
                         }
-                        .sharedElement(
-                            rememberSharedContentState(key = "image-${wallpaper.id}"),
-                            animatedVisibilityScope = animatedVisibilityScope
+                        .then(
+                            if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                                with(sharedTransitionScope) {
+                                    Modifier.sharedElement(
+                                        rememberSharedContentState(key = "image-${wallpaper.id}"),
+                                        animatedVisibilityScope = animatedVisibilityScope
+                                    )
+                                }
+                            } else Modifier
                         )
                 )
-                IconButton(
-                    onClick = {
-                        scope.launch(Dispatchers.IO) {
-                            val dao = AppDatabase.getDatabase(context, scope).wallpaperDao()
-                            dao.updateFavouriteStatus(wallpaper.id, !wallpaper.isFavourite)
-                        }
-                    },
+                Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(4.dp)
+                        .size(32.dp)
+                        .background(Color.Black.copy(alpha = 0.2f), CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(bounded = false, color = Color.Red),
+                            onClick = {
+                                val newLikedState = !isLiked
+                                isLiked = newLikedState
+                                scope.launch(Dispatchers.IO) {
+                                    val dao = AppDatabase.getDatabase(context).wallpaperDao()
+                                    dao.updateFavouriteStatus(wallpaper.id, newLikedState)
+                                }
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Favorite,
+                        imageVector = if (isLiked) favorite_filled else favorite,
                         contentDescription = "Favourite",
-                        tint = if (wallpaper.isFavourite) Color.Red else Color.White,
-                        modifier = Modifier.size(32.dp)
+                        tint = if (isLiked) Color.Red else Color.White,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                Row(
+                FlowRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomStart)
                         .padding(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TagChip(wallpaper.timePhase.name)
-                    TagChip(wallpaper.brightness.name)
+                    wallpaper.tags.take(3).forEach { tag ->
+                        TagChip(tag)
+                    }
                 }
             }
         }
+    }
+
+    if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+        with(sharedTransitionScope) {
+            with(animatedVisibilityScope) {
+                cardContent()
+            }
+        }
+    } else {
+        cardContent()
     }
 }
 
@@ -168,25 +220,3 @@ fun TagChip(label: String) {
         )
     )
 }
-
-
-//@Preview
-//@Composable
-//fun WallpaperCardPreview() {
-//    val dummyWallpaper = Wallpaper(
-//        id = 1,
-//        filePath = "file:///android_asset/wallpapers/wallpaper20.webp",
-//        timePhase = WallpaperTimePhase.MORNING,
-//        brightness = WallpaperBrightness.LIGHT
-//    )
-//    SharedTransitionLayout {
-//        AnimatedVisibility(visible = true) {
-//            WallpaperCard(
-//                wallpaper = dummyWallpaper,
-//                sharedTransitionScope = this@SharedTransitionLayout,
-//                animatedVisibilityScope = this@AnimatedVisibility,
-//                onClick = {}
-//            )
-//        }
-//    }
-//}

@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -66,16 +65,13 @@ fun CollectionWallpapersScreen(
 
     var showWallpaperSelect by remember { mutableStateOf(false) }
     var selectedWallpapers by remember { mutableStateOf(setOf<Int>()) }
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = false,
-    )
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
 
     if (showWallpaperSelect) {
         ModalBottomSheet(
             onDismissRequest = { showWallpaperSelect = false },
             sheetState = sheetState,
-            modifier = Modifier.fillMaxHeight()
         ) {
             Scaffold(
                 bottomBar = {

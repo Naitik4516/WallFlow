@@ -12,7 +12,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -20,25 +19,24 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class WallpaperViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = AppDatabase.getDatabase(application, viewModelScope)
+    private val db = AppDatabase.getDatabase(application)
     private val wallpaperDao = db.wallpaperDao()
 
-    private val _selectedFilter = MutableStateFlow("All")
-    private val _filterType = MutableStateFlow("time") // "time", "brightness"
-    val selectedFilter: StateFlow<String> = _selectedFilter.asStateFlow()
+    private data class FilterState(val value: String = "All", val type: String = "time")
+
+    private val _filterState = MutableStateFlow(FilterState())
+    val selectedFilter: StateFlow<String> = _filterState
+        .map { it.value }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "All")
 
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val wallpapers: StateFlow<List<Wallpaper>> = _selectedFilter
-        .flatMapLatest { filter ->
-            if (filter == "All") {
+    val wallpapers: StateFlow<List<Wallpaper>> = _filterState
+        .flatMapLatest { filterState ->
+            if (filterState.value == "All") {
                 wallpaperDao.getAllWallpapersFlow()
             } else {
-                when (_filterType.value) {
-                    "time" -> wallpaperDao.getWallpapersByTimePhaseFlow(filter.uppercase())
-                    "brightness" -> wallpaperDao.getWallpapersByBrightnessFlow(filter.uppercase())
-                    else -> wallpaperDao.getAllWallpapersFlow()
-                }
+                wallpaperDao.getWallpapersByTagFlow(filterState.value.uppercase())
             }
         }
         .map { entities -> entities.map { it.toWallpaper() } }
@@ -50,8 +48,7 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
         )
 
     fun setFilter(filter: String, type: String) {
-        _selectedFilter.value = filter
-        _filterType.value = type
+        _filterState.value = FilterState(filter, type)
     }
 
     fun deleteWallpapers(wallpaperIds: Set<Int>) {
@@ -64,6 +61,12 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
     fun deleteWallpaper(wallpaper: Wallpaper) {
         viewModelScope.launch {
             wallpaperDao.deleteWallpaperById(wallpaper.id)
+        }
+    }
+
+    fun updateWallpaperTags(wallpaperId: Int, tags: List<String>) {
+        viewModelScope.launch {
+            wallpaperDao.updateWallpaperTags(wallpaperId, tags.joinToString(","))
         }
     }
 }

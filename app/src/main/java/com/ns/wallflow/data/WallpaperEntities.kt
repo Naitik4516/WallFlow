@@ -7,8 +7,6 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 import com.ns.wallflow.model.Wallpaper
-import com.ns.wallflow.model.WallpaperBrightness
-import com.ns.wallflow.model.WallpaperTimePhase
 
 @Entity(tableName = "collections")
 data class CollectionEntity(
@@ -27,13 +25,12 @@ data class CollectionEntity(
             onDelete = ForeignKey.SET_NULL
         )
     ],
-    indices = [Index(value = ["collectionId"]), Index(value = ["timePhaseTag"]), Index(value = ["brightnessTag"])]
+    indices = [Index(value = ["collectionId"])]
 )
 data class WallpaperEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val filePath: String,
-    val timePhaseTag: String, // "MORNING", "AFTERNOON", "EVENING", "NIGHT"
-    val brightnessTag: String, // "LIGHT", "DARK"
+    val tags: String = "", // Comma-separated tags
     val collectionId: Int? = null,
     val isFavourite: Boolean = false,
     val originalUri: String = "",
@@ -55,8 +52,7 @@ fun WallpaperEntity.toWallpaper(collectionName: String? = null): Wallpaper {
         filePath = this.filePath,
         collection = collectionName,
         addedAt = this.createdAt,
-        timePhase = WallpaperTimePhase.valueOf(this.timePhaseTag),
-        brightness = WallpaperBrightness.valueOf(this.brightnessTag),
+        tags = if (this.tags.isEmpty()) emptyList() else this.tags.split(","),
         isFavourite = this.isFavourite,
         originalUri = this.originalUri
     )

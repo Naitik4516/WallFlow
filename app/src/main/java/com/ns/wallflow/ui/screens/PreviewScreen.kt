@@ -1,5 +1,11 @@
 package com.ns.wallflow.ui.screens
 
+import android.app.Activity
+import android.app.WallpaperManager
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -10,57 +16,70 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import com.ns.wallflow.model.Wallpaper
-import android.app.Activity
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.material3.ElevatedButton
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Surface
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.foundation.shape.RoundedCornerShape
-import com.ns.wallflow.ui.icons.arrow_back
-import kotlinx.coroutines.launch
-import android.app.WallpaperManager
-import android.content.Context
+import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.toBitmap
+import com.ns.wallflow.model.Wallpaper
+import com.ns.wallflow.ui.icons.arrow_back
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.content.Intent
-import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
-import android.graphics.Bitmap
 
 suspend fun setWallpaperAction(
     context: Context,
@@ -133,7 +152,11 @@ suspend fun shareWallpaperWithOtherApp(
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalSharedTransitionApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class
+)
 @Composable
 fun PreviewScreen(
     wallpaper: Wallpaper,
@@ -259,8 +282,9 @@ fun PreviewScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(32.dp, 16.dp)
-                        .padding(bottom = 32.dp),
+                        .padding(horizontal = 32.dp)
+                        .padding(bottom = 32.dp)
+                        .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -284,7 +308,9 @@ fun PreviewScreen(
                                 sheetState.hide()
                             }.invokeOnCompletion { showBottomSheet = false }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
                         Text("Home Screen", modifier = Modifier.padding(vertical=4.dp))
                     }
@@ -303,7 +329,9 @@ fun PreviewScreen(
                                 sheetState.hide()
                             }.invokeOnCompletion { showBottomSheet = false }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
                         Text("Lock Screen", modifier = Modifier.padding(vertical=4.dp))
                     }
@@ -322,7 +350,9 @@ fun PreviewScreen(
                                 sheetState.hide()
                             }.invokeOnCompletion { showBottomSheet = false }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
                         Text("Home and Lock Screens", modifier = Modifier.padding(vertical=4.dp))
                     }
@@ -334,7 +364,9 @@ fun PreviewScreen(
                                 shareWallpaperWithOtherApp(context, wallpaper)
                             }.invokeOnCompletion { showBottomSheet = false }
                         },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     ) {
                         Text("Set with ...", modifier = Modifier.padding(vertical=4.dp))
                     }
@@ -364,25 +396,3 @@ fun PreviewScreen(
         }
     }
 }
-
-//@OptIn(ExperimentalSharedTransitionApi::class)
-//@Preview(showBackground = true)
-//@Composable
-//fun PreviewScreenPreview() {
-//    SharedTransitionLayout {
-//        AnimatedVisibility(visible = true) {
-//            PreviewScreen(
-//                wallpaper = Wallpaper(
-//                    id = 45,
-//                    source = "BUNDLED",
-//                    filePath = "file:///android_asset/wallpapers/wallpaper21.webp",
-//                    timePhaseTag = "EVENING",
-//                    brightnessTag = "DARK"
-//                ),
-//                sharedTransitionScope = this@SharedTransitionLayout,
-//                animatedVisibilityScope = this@AnimatedVisibility,
-//                onBackClick = {}
-//            )
-//        }
-//    }
-//}

@@ -9,8 +9,10 @@ import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.ns.wallflow.data.settingsDataStore
 import com.ns.wallflow.model.AppSettingsState
+import com.ns.wallflow.model.AutoWallpaperSettings
 import com.ns.wallflow.model.TriggerFrequency
 import com.ns.wallflow.worker.AutoWallpaperWorker
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,12 +42,46 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     private fun scheduleAutoWallpaper(settings: AppSettingsState) {
         val workManager = WorkManager.getInstance(app)
 
-        if (!settings.autoWallpaper.isEnabled) {
+        if (settings.useSeparateConfig) {
+            // Cancel global work
             workManager.cancelUniqueWork("AutoWallpaperWork")
+
+            // Schedule Home
+            scheduleSpecificWork(
+                workManager,
+                "AutoWallpaperWork_Home",
+                settings.homeAutoWallpaper,
+                "HOME"
+            )
+            // Schedule Lock
+            scheduleSpecificWork(
+                workManager,
+                "AutoWallpaperWork_Lock",
+                settings.lockAutoWallpaper,
+                "LOCK"
+            )
+        } else {
+            // Cancel separate works
+            workManager.cancelUniqueWork("AutoWallpaperWork_Home")
+            workManager.cancelUniqueWork("AutoWallpaperWork_Lock")
+
+            // Schedule Global
+            scheduleSpecificWork(workManager, "AutoWallpaperWork", settings.autoWallpaper, "GLOBAL")
+        }
+    }
+
+    private fun scheduleSpecificWork(
+        workManager: WorkManager,
+        workName: String,
+        settings: AutoWallpaperSettings,
+        configType: String
+    ) {
+        if (!settings.isEnabled) {
+            workManager.cancelUniqueWork(workName)
             return
         }
 
-        val repeatInterval = when (settings.autoWallpaper.timeFrequency) {
+        val repeatInterval = when (settings.timeFrequency) {
             TriggerFrequency.MIN_15 -> 15L
             TriggerFrequency.HOUR_1 -> 1L * 60L
             TriggerFrequency.HOUR_4 -> 4L * 60L
@@ -60,11 +96,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         val workRequest =
             PeriodicWorkRequestBuilder<AutoWallpaperWorker>(repeatInterval, TimeUnit.MINUTES)
                 .setConstraints(constraints)
+                .setInputData(workDataOf("config_type" to configType))
                 .build()
 
         workManager.enqueueUniquePeriodicWork(
-            "AutoWallpaperWork",
-            ExistingPeriodicWorkPolicy.UPDATE, // or UPDATE (Android 12+) or REPLACE
+            workName,
+            ExistingPeriodicWorkPolicy.UPDATE,
             workRequest
         )
     }

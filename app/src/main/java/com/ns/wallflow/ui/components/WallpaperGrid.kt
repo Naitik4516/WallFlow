@@ -17,11 +17,11 @@ import com.ns.wallflow.model.Wallpaper
 fun WallpaperGrid(
     modifier: Modifier = Modifier,
     wallpapers: List<Wallpaper>,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onWallpaperClick: (Wallpaper) -> Unit,
-    selectedItemIds: Set<Int>,
-    updateSelectedItemIds: (Set<Int>) -> Unit,
+    selectedItemIds: Set<Int> = emptySet(),
+    updateSelectedItemIds: (Set<Int>) -> Unit = {},
     selectionMode: Boolean = false,
 ) {
     LazyVerticalStaggeredGrid(

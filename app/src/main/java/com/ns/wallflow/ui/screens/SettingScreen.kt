@@ -4,13 +4,11 @@ import android.app.Application
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -37,20 +36,26 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.ns.wallflow.model.AppTheme
+import com.ns.wallflow.model.AutoWallpaperSettings
 import com.ns.wallflow.model.TriggerFrequency
 import com.ns.wallflow.model.WallpaperMode
 import com.ns.wallflow.model.WallpaperTarget
 import com.ns.wallflow.model.WallpaperType
 import com.ns.wallflow.ui.components.CollectionCard
+import com.ns.wallflow.ui.components.WallpaperGrid
 import com.ns.wallflow.viewmodel.CollectionsViewModel
 import com.ns.wallflow.viewmodel.CollectionsViewModelFactory
 import com.ns.wallflow.viewmodel.SettingsViewModel
@@ -117,231 +122,240 @@ fun SettingsScreen(
 
             // Auto Wallpaper
             SettingSectionHeader("Auto Wallpaper Change")
+            val isAutoEnabled = if (settings.useSeparateConfig) {
+                settings.homeAutoWallpaper.isEnabled || settings.lockAutoWallpaper.isEnabled
+            } else {
+                settings.autoWallpaper.isEnabled
+            }
+
             SettingSwitch(
                 title = "Enable Auto Wallpaper",
-                checked = settings.autoWallpaper.isEnabled,
+                checked = isAutoEnabled,
                 onCheckedChange = { checked ->
                     viewModel.updateSettings { s ->
-                        s.copy(
-                            autoWallpaper = s.autoWallpaper.copy(
-                                isEnabled = checked
+                        if (s.useSeparateConfig) {
+                            s.copy(
+                                homeAutoWallpaper = s.homeAutoWallpaper.copy(isEnabled = checked),
+                                lockAutoWallpaper = s.lockAutoWallpaper.copy(isEnabled = checked)
                             )
-                        )
+                        } else {
+                            s.copy(
+                                autoWallpaper = s.autoWallpaper.copy(isEnabled = checked)
+                            )
+                        }
                     }
                 }
             )
 
+
+
             AnimatedVisibility(
-                visible = settings.autoWallpaper.isEnabled,
+                visible = isAutoEnabled,
                 enter = expandVertically(),
                 exit = shrinkVertically()
             ) {
-                Column(Modifier.padding(start = 16.dp)) {
-                    SettingDropdown(
-                        title = "Target",
-                        options = WallpaperTarget.entries,
-                        selectedOption = settings.autoWallpaper.target,
-                        optionLabel = {
-                            it.name.replace("_", " ").lowercase()
-                                .replaceFirstChar { char -> char.uppercase() }
-                        },
-                        onOptionSelected = { target ->
-                            viewModel.updateSettings { s ->
-                                s.copy(
-                                    autoWallpaper = s.autoWallpaper.copy(
-                                        target = target
-                                    )
-                                )
-                            }
+                Column {
+                    SettingSwitch(
+                        title = "Configure Separately",
+                        description = "Different settings for Home and Lock screens",
+                        checked = settings.useSeparateConfig,
+                        onCheckedChange = { checked ->
+                            viewModel.updateSettings { it.copy(useSeparateConfig = checked) }
                         }
                     )
 
-                    SettingDropdown(
-                        title = "Mode",
-                        options = WallpaperMode.entries,
-                        selectedOption = settings.autoWallpaper.mode,
-                        optionLabel = {
-                            it.name.replace("_", " ").lowercase()
-                                .replaceFirstChar { char -> char.uppercase() }
-                        },
-                        onOptionSelected = { mode ->
-                            viewModel.updateSettings { s ->
-                                s.copy(
-                                    autoWallpaper = s.autoWallpaper.copy(
-                                        mode = mode
-                                    )
-                                )
-                            }
-                        }
-                    )
 
-                    // Conditional UI based on Mode
-                    AnimatedVisibility(
-                        visible = settings.autoWallpaper.mode == WallpaperMode.TIME,
-                        enter = expandVertically(),
-                        exit = shrinkVertically()
-                    ) {
-                        Column {
-                            SettingDropdown(
-                                title = "Trigger Frequency",
-                                options = TriggerFrequency.entries,
-                                selectedOption = settings.autoWallpaper.timeFrequency,
-                                optionLabel = { it.label },
-                                onOptionSelected = { freq ->
-                                    viewModel.updateSettings { s ->
-                                        s.copy(
-                                            autoWallpaper = s.autoWallpaper.copy(
-                                                timeFrequency = freq
-                                            )
-                                        )
-                                    }
-                                }
-                            )
-                            WallpaperSelectionSetting(
-                                title = "Wallpaper Set",
-                                value = settings.autoWallpaper.timeWallpaperType,
-                                onTypeSelected = { type ->
-                                    viewModel.updateSettings { s ->
-                                        s.copy(
-                                            autoWallpaper = s.autoWallpaper.copy(
-                                                timeWallpaperType = type
-                                            )
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }
+                    if (settings.useSeparateConfig) {
+                        // Home Screen Config
+                        SettingSectionHeader("Home Screen")
+                        AutoWallpaperConfigSection(
+                            settings = settings.homeAutoWallpaper,
+                            onSettingsChange = { newConfig ->
+                                viewModel.updateSettings { it.copy(homeAutoWallpaper = newConfig) }
+                            },
+                            showTarget = false
+                        )
 
-                    AnimatedVisibility(
-                        visible = settings.autoWallpaper.mode == WallpaperMode.DAY_NIGHT,
-                        enter = expandVertically(),
-                        exit = shrinkVertically()
-                    ) {
-                        Column {
-                            WallpaperSelectionSetting(
-                                title = "Day Wallpaper",
-                                value = settings.autoWallpaper.dayWallpaperType,
-                                onTypeSelected = { type ->
-                                    viewModel.updateSettings { s ->
-                                        s.copy(
-                                            autoWallpaper = s.autoWallpaper.copy(
-                                                dayWallpaperType = type
-                                            )
-                                        )
-                                    }
-                                }
-                            )
-                            WallpaperSelectionSetting(
-                                title = "Night Wallpaper",
-                                value = settings.autoWallpaper.nightWallpaperType,
-                                onTypeSelected = { type ->
-                                    viewModel.updateSettings { s ->
-                                        s.copy(
-                                            autoWallpaper = s.autoWallpaper.copy(
-                                                nightWallpaperType = type
-                                            )
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }
+                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
-                    AnimatedVisibility(
-                        visible = settings.autoWallpaper.mode == WallpaperMode.DAY_CYCLES,
-                        enter = expandVertically(),
-                        exit = shrinkVertically()
-                    ) {
-                        Column {
-                            listOf("Morning", "Afternoon", "Evening", "Night").forEach { cycle ->
-                                WallpaperSelectionSetting(
-                                    title = "$cycle Wallpaper",
-                                    value = settings.autoWallpaper.dayCyclesConfig[cycle]
-                                        ?: WallpaperType.Any,
-                                    onTypeSelected = { type ->
-                                        viewModel.updateSettings { s ->
-                                            val mutMap =
-                                                s.autoWallpaper.dayCyclesConfig.toMutableMap()
-                                            mutMap[cycle] = type
-                                            s.copy(
-                                                autoWallpaper = s.autoWallpaper.copy(
-                                                    dayCyclesConfig = mutMap
-                                                )
-                                            )
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = settings.autoWallpaper.mode == WallpaperMode.WEEKLY,
-                        enter = expandVertically(),
-                        exit = shrinkVertically()
-                    ) {
-                        Column {
-                            listOf(
-                                "Monday",
-                                "Tuesday",
-                                "Wednesday",
-                                "Thursday",
-                                "Friday",
-                                "Saturday",
-                                "Sunday"
-                            ).forEach { day ->
-                                WallpaperSelectionSetting(
-                                    title = "$day Wallpaper",
-                                    value = settings.autoWallpaper.weeklyConfig[day]
-                                        ?: WallpaperType.Any,
-                                    onTypeSelected = { type ->
-                                        viewModel.updateSettings { s ->
-                                            val mutMap = s.autoWallpaper.weeklyConfig.toMutableMap()
-                                            mutMap[day] = type
-                                            s.copy(autoWallpaper = s.autoWallpaper.copy(weeklyConfig = mutMap))
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = settings.autoWallpaper.mode == WallpaperMode.SYSTEM_THEME,
-                        enter = expandVertically(),
-                        exit = shrinkVertically()
-                    ) {
-                        Column {
-                            WallpaperSelectionSetting(
-                                title = "Light Theme Wallpaper",
-                                value = settings.autoWallpaper.systemLightWallpaperType,
-                                onTypeSelected = { type ->
-                                    viewModel.updateSettings { s ->
-                                        s.copy(
-                                            autoWallpaper = s.autoWallpaper.copy(
-                                                systemLightWallpaperType = type
-                                            )
-                                        )
-                                    }
-                                }
-                            )
-                            WallpaperSelectionSetting(
-                                title = "Dark Theme Wallpaper",
-                                value = settings.autoWallpaper.systemDarkWallpaperType,
-                                onTypeSelected = { type ->
-                                    viewModel.updateSettings { s ->
-                                        s.copy(
-                                            autoWallpaper = s.autoWallpaper.copy(
-                                                systemDarkWallpaperType = type
-                                            )
-                                        )
-                                    }
-                                }
-                            )
-                        }
+                        // Lock Screen Config
+                        SettingSectionHeader("Lock Screen")
+                        AutoWallpaperConfigSection(
+                            settings = settings.lockAutoWallpaper,
+                            onSettingsChange = { newConfig ->
+                                viewModel.updateSettings { it.copy(lockAutoWallpaper = newConfig) }
+                            },
+                            showTarget = false
+                        )
+                    } else {
+                        AutoWallpaperConfigSection(
+                            settings = settings.autoWallpaper,
+                            onSettingsChange = { newConfig ->
+                                viewModel.updateSettings { it.copy(autoWallpaper = newConfig) }
+                            },
+                            showTarget = true
+                        )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun AutoWallpaperConfigSection(
+    settings: AutoWallpaperSettings,
+    onSettingsChange: (AutoWallpaperSettings) -> Unit,
+    showTarget: Boolean
+) {
+    Column(Modifier.padding(start = 16.dp)) {
+        if (showTarget) {
+            SettingDropdown(
+                title = "Target",
+                options = WallpaperTarget.entries,
+                selectedOption = settings.target,
+                optionLabel = {
+                    it.name.replace("_", " ").lowercase()
+                        .replaceFirstChar { char -> char.uppercase() }
+                },
+                onOptionSelected = { target ->
+                    onSettingsChange(settings.copy(target = target))
+                }
+            )
+        }
+
+        SettingDropdown(
+            title = "Mode",
+            options = WallpaperMode.entries,
+            selectedOption = settings.mode,
+            optionLabel = {
+                it.name.replace("_", " ").lowercase()
+                    .replaceFirstChar { char -> char.uppercase() }
+            },
+            onOptionSelected = { mode ->
+                onSettingsChange(settings.copy(mode = mode))
+            }
+        )
+
+        // Conditional UI based on Mode
+        AnimatedVisibility(
+            visible = settings.mode == WallpaperMode.TIME,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column {
+                SettingDropdown(
+                    title = "Trigger Frequency",
+                    options = TriggerFrequency.entries,
+                    selectedOption = settings.timeFrequency,
+                    optionLabel = { it.label },
+                    onOptionSelected = { freq ->
+                        onSettingsChange(settings.copy(timeFrequency = freq))
+                    }
+                )
+                WallpaperSelectionSetting(
+                    title = "Wallpaper Set",
+                    value = settings.timeWallpaperType,
+                    onTypeSelected = { type ->
+                        onSettingsChange(settings.copy(timeWallpaperType = type))
+                    }
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = settings.mode == WallpaperMode.DAY_NIGHT,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column {
+                WallpaperSelectionSetting(
+                    title = "Day Wallpaper",
+                    value = settings.dayWallpaperType,
+                    onTypeSelected = { type ->
+                        onSettingsChange(settings.copy(dayWallpaperType = type))
+                    }
+                )
+                WallpaperSelectionSetting(
+                    title = "Night Wallpaper",
+                    value = settings.nightWallpaperType,
+                    onTypeSelected = { type ->
+                        onSettingsChange(settings.copy(nightWallpaperType = type))
+                    }
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = settings.mode == WallpaperMode.DAY_CYCLES,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column {
+                listOf("Morning", "Afternoon", "Evening", "Night").forEach { cycle ->
+                    WallpaperSelectionSetting(
+                        title = "$cycle Wallpaper",
+                        value = settings.dayCyclesConfig[cycle]
+                            ?: WallpaperType.Any,
+                        onTypeSelected = { type ->
+                            val mutMap = settings.dayCyclesConfig.toMutableMap()
+                            mutMap[cycle] = type
+                            onSettingsChange(settings.copy(dayCyclesConfig = mutMap))
+                        }
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = settings.mode == WallpaperMode.WEEKLY,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column {
+                listOf(
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                    "Sunday"
+                ).forEach { day ->
+                    WallpaperSelectionSetting(
+                        title = "$day Wallpaper",
+                        value = settings.weeklyConfig[day]
+                            ?: WallpaperType.Any,
+                        onTypeSelected = { type ->
+                            val mutMap = settings.weeklyConfig.toMutableMap()
+                            mutMap[day] = type
+                            onSettingsChange(settings.copy(weeklyConfig = mutMap))
+                        }
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = settings.mode == WallpaperMode.SYSTEM_THEME,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column {
+                WallpaperSelectionSetting(
+                    title = "Light Theme Wallpaper",
+                    value = settings.systemLightWallpaperType,
+                    onTypeSelected = { type ->
+                        onSettingsChange(settings.copy(systemLightWallpaperType = type))
+                    }
+                )
+                WallpaperSelectionSetting(
+                    title = "Dark Theme Wallpaper",
+                    value = settings.systemDarkWallpaperType,
+                    onTypeSelected = { type ->
+                        onSettingsChange(settings.copy(systemDarkWallpaperType = type))
+                    }
+                )
             }
         }
     }
@@ -451,6 +465,25 @@ fun WallpaperSelectionSetting(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val thumbnailPath = when (value) {
+            is WallpaperType.Collection -> value.thumbnailPath
+            is WallpaperType.Specific -> value.thumbnailPath
+            else -> null
+        }
+
+        if (thumbnailPath != null) {
+            AsyncImage(
+                model = thumbnailPath,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+        }
+
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             Text(
@@ -483,7 +516,7 @@ fun WallpaperSelectionBottomSheet(
     onTypeSelected: (WallpaperType) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-    var currentStep by remember { mutableStateOf(0) } // 0 = Type Selection, 1 = Pick Collection, 2 = Pick Wallpaper
+    var currentStep by remember { mutableIntStateOf(0) } // 0 = Type Selection, 1 = Pick Collection, 2 = Pick Wallpaper
 
     val context = LocalContext.current
     val application = context.applicationContext as Application
@@ -491,7 +524,7 @@ fun WallpaperSelectionBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = if (currentStep > 0) Modifier.fillMaxHeight(0.9f) else Modifier
+        modifier = Modifier
     ) {
         Column(modifier = Modifier.padding(bottom = 32.dp)) {
             Text(
@@ -552,8 +585,9 @@ fun WallpaperSelectionBottomSheet(
                                 onClick = {
                                     onTypeSelected(
                                         WallpaperType.Collection(
-                                            collection.id,
-                                            collection.name
+                                            collectionId = collection.id,
+                                            collectionName = collection.name,
+                                            thumbnailPath = collection.coverImagesPaths?.firstOrNull()
                                         )
                                     )
                                 },
@@ -570,32 +604,19 @@ fun WallpaperSelectionBottomSheet(
                     val wallpaperViewModel: WallpaperViewModel =
                         viewModel(factory = WallpaperViewModelFactory(application))
                     val wallpapers by wallpaperViewModel.wallpapers.collectAsState()
-                    // Reusing WallpaperGrid or just simple grid
-                    LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 120.dp)) {
-                        items(items = wallpapers) { wallpaper ->
-                            // Custom card for wallpaper picking without animated scope
-                            Box(
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .aspectRatio(0.6f)
-                                    .clickable {
-                                        onTypeSelected(
-                                            WallpaperType.Specific(
-                                                wallpaper.id,
-                                                "Wallpaper ${wallpaper.id}"
-                                            )
-                                        )
-                                    }
-                            ) {
-                                coil3.compose.AsyncImage(
-                                    model = wallpaper.filePath, // Check what actually displays wallpaper
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+
+                    WallpaperGrid(
+                        wallpapers = wallpapers,
+                        onWallpaperClick = { wallpaper ->
+                            onTypeSelected(
+                                WallpaperType.Specific(
+                                    wallpaperId = wallpaper.id,
+                                    wallpaperName = "Wallpaper ${wallpaper.id}",
+                                    thumbnailPath = wallpaper.filePath
                                 )
-                            }
+                            )
                         }
-                    }
+                    )
                 }
             }
         }

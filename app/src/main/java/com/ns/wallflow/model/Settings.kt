@@ -20,12 +20,20 @@ sealed class WallpaperType {
     }
 
     @Serializable
-    data class Collection(val collectionId: Int, val collectionName: String) : WallpaperType() {
+    data class Collection(
+        val collectionId: Int,
+        val collectionName: String,
+        val thumbnailPath: String? = null
+    ) : WallpaperType() {
         override val label = "Collection ($collectionName)"
     }
 
     @Serializable
-    data class Specific(val wallpaperId: Int, val wallpaperName: String) : WallpaperType() {
+    data class Specific(
+        val wallpaperId: Int,
+        val wallpaperName: String,
+        val thumbnailPath: String? = null
+    ) : WallpaperType() {
         override val label = "Specific Wallpaper"
     }
 }
@@ -59,9 +67,12 @@ data class AutoWallpaperSettings(
 
 @Serializable
 data class AppSettingsState(
-    val theme: AppTheme = AppTheme.SYSTEM,
+    val theme: AppTheme = AppTheme.DYNAMIC,
     val autoUpdate: Boolean = true,
+    val useSeparateConfig: Boolean = false,
     val autoWallpaper: AutoWallpaperSettings = AutoWallpaperSettings(),
+    val homeAutoWallpaper: AutoWallpaperSettings = AutoWallpaperSettings(target = WallpaperTarget.HOME_SCREEN),
+    val lockAutoWallpaper: AutoWallpaperSettings = AutoWallpaperSettings(target = WallpaperTarget.LOCK_SCREEN),
     val optimizeWallpaper: Boolean = true,
     val autoAddTags: Boolean = true
 )

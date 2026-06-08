@@ -5,7 +5,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.ns.wallflow.ui.icons.Close
 
 
@@ -19,7 +20,11 @@ fun SelectionTopAppBar(
 ) {
     TopAppBar(
         title = {
-            Text(text = if (isSelectionMode) "$selectedCount Selected" else "My Gallery")
+            Text(
+                text = if (isSelectionMode) "$selectedCount Selected" else "My Gallery",
+                fontSize = if (isSelectionMode) 18.sp else 22.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         },
         navigationIcon = {
             if (isSelectionMode) {

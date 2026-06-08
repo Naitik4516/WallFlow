@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="docs/images/icon.webp" width="128" height="128" />
+![icon](docs/images/icon.webp)
 
 **A modern local wallpaper manager and scheduler for Android**
 
@@ -110,19 +110,24 @@ Choose where wallpapers are applied:
 
 Displays your wallpaper library with category filters, favorites, and quick actions.
 
-![](docs/images/home.webp)
+<div align="center">
+<img src="docs/images/home.webp" height="600">
+</div>
 
 ### Collections
 
 Create and manage wallpaper collections with beautiful collage previews.
-
-![](docs/images/collections.webp)
+<div align="center">
+<img src="docs/images/collections.webp" height="600">
+</div>
 
 ### Scheduler & Settings
 
 Configure automatic wallpaper changes for home and lock screens independently.
 
-![](docs/images/settings.webp)
+<div align="center">
+<img src="docs/images/settings.webp" height="600">
+</div>
 
 ---
 

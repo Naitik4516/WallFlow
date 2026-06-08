@@ -429,7 +429,6 @@ fun <T> SettingDropdown(
             expanded = expanded,
             onExpandedChange = { expanded = it }
         ) {
-            // Hidden anchor to display dropdown anchored here
             Spacer(modifier = Modifier.menuAnchor())
             DropdownMenu(
                 expanded = expanded,

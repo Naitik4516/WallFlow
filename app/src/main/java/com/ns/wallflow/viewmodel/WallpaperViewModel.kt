@@ -57,13 +57,6 @@ class WallpaperViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-
-    fun deleteWallpaper(wallpaper: Wallpaper) {
-        viewModelScope.launch {
-            wallpaperDao.deleteWallpaperById(wallpaper.id)
-        }
-    }
-
     fun updateWallpaperTags(wallpaperId: Int, tags: List<String>) {
         viewModelScope.launch {
             wallpaperDao.updateWallpaperTags(wallpaperId, tags.joinToString(","))

@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +57,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sign
-import kotlin.random.Random
 
 private class UnreactiveBoundsHolder {
     var rect: Rect = Rect.Zero
@@ -76,7 +76,7 @@ fun WallpaperCard(
     val windowInfo = LocalWindowInfo.current
     val screenHeight = windowInfo.containerSize.height.toFloat()
 
-    val cardHeight = remember(wallpaper.id) { Random.nextInt(250, 320) }
+    val cardHeight = rememberSaveable(wallpaper.id) { 250 + (abs(wallpaper.id * 31) % 71) }
 
     var parallaxOffset by remember { mutableFloatStateOf(0f) }
     val boundsHolder = remember { UnreactiveBoundsHolder() }
@@ -111,7 +111,11 @@ fun WallpaperCard(
                     val ratio = (center - screenHeight / 2f) / (screenHeight / 2f)
 
                     val curvedRatio = sign(ratio) * abs(ratio).toDouble().pow(1.5).toFloat()
-                    val columnSpeedMultiplier = if (columnIndex == 0) 1.2f else 0.9f
+
+                    // Determine actual column from X position for more robust parallax
+                    val x = coordinates.positionInWindow().x
+                    val actualColumn = if (x < windowInfo.containerSize.width / 2f) 0 else 1
+                    val columnSpeedMultiplier = if (actualColumn == 0) 1.2f else 0.9f
 
                     parallaxOffset = curvedRatio * (height * 0.15f) * columnSpeedMultiplier
                 }

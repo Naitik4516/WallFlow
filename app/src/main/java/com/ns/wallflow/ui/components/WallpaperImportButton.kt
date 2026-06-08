@@ -20,16 +20,22 @@ import com.ns.wallflow.data.AppDatabase
 import com.ns.wallflow.data.WallpaperDao
 import com.ns.wallflow.data.WallpaperEntity
 import com.ns.wallflow.data.settingsDataStore
+import com.ns.wallflow.model.AppSettingsState
 import com.ns.wallflow.model.WallpaperBrightness
 import com.ns.wallflow.model.WallpaperTimePhase
 import com.ns.wallflow.ui.icons.add
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 data class WallpaperTags(
     val timePhase: WallpaperTimePhase,   // MORNING, AFTERNOON, EVENING, NIGHT
@@ -53,9 +59,26 @@ fun WallpaperImportBtn(
             onImportStateChanged(true, 0, uris.size)
             scope.launch {
                 val dao = AppDatabase.getDatabase(context.applicationContext).wallpaperDao()
-                for ((index, uri) in uris.withIndex()) {
-                    saveAndClassifyWallpaper(context, uri, dao, collectionId)
-                    onImportStateChanged(true, index + 1, uris.size)
+                val settings = context.settingsDataStore.data.first()
+                val total = uris.size
+                val completed = AtomicInteger(0)
+                val semaphore = Semaphore(2) // Limit concurrency to avoid OOM
+
+                withContext(Dispatchers.IO) {
+                    val targetDirectory = File(context.filesDir, "wallpapers")
+                    if (!targetDirectory.exists()) targetDirectory.mkdirs()
+
+                    uris.map { uri ->
+                        async {
+                            semaphore.withPermit {
+                                saveAndClassifyWallpaper(context, uri, dao, settings, collectionId)
+                                val current = completed.incrementAndGet()
+                                withContext(Dispatchers.Main) {
+                                    onImportStateChanged(true, current, total)
+                                }
+                            }
+                        }
+                    }.awaitAll()
                 }
                 onImportStateChanged(false, 0, 0)
             }
@@ -73,11 +96,16 @@ fun WallpaperImportBtn(
     }
 }
 
-suspend fun saveAndClassifyWallpaper(context: Context, uri: Uri, dao: WallpaperDao, collectionId: Int? = null) {
+suspend fun saveAndClassifyWallpaper(
+    context: Context,
+    uri: Uri,
+    dao: WallpaperDao,
+    settings: AppSettingsState,
+    collectionId: Int? = null
+) {
     withContext(Dispatchers.IO) {
         var originalBitmap: Bitmap? = null
         try {
-            val settings = context.settingsDataStore.data.first()
             val optimize = settings.optimizeWallpaper
             val autoAddTags = settings.autoAddTags
 
@@ -86,13 +114,13 @@ suspend fun saveAndClassifyWallpaper(context: Context, uri: Uri, dao: WallpaperD
                 return@withContext
             }
 
-            val targetDirectory = File(context.filesDir, "wallpapers").apply {
-                if (!exists()) mkdirs()
-            }
+            val targetDirectory = File(context.filesDir, "wallpapers")
             val destinationFile = File(targetDirectory, "wp_${UUID.randomUUID()}.webp")
             if (optimize) {
                 context.contentResolver.openInputStream(uri).use { inputStream ->
-                    originalBitmap = BitmapFactory.decodeStream(inputStream)
+                    val options = BitmapFactory.Options()
+                        .apply { inSampleSize = calculateInSampleSize(context, uri) }
+                    originalBitmap = BitmapFactory.decodeStream(inputStream, null, options)
                 }
 
                 if (originalBitmap == null) return@withContext
@@ -200,4 +228,22 @@ private fun analyzeAndExtractTags(bitmap: Bitmap): WallpaperTags {
     }
 
     return WallpaperTags(timePhase = timePhaseTag, brightness = brightnessTag)
+}
+
+private fun calculateInSampleSize(context: Context, uri: Uri): Int {
+    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    context.contentResolver.openInputStream(uri).use { inputStream ->
+        BitmapFactory.decodeStream(inputStream, null, options)
+    }
+    var inSampleSize = 1
+    val (width, height) = options.outWidth to options.outHeight
+    val maxDimension = 3840 // 4K max
+    if (width > maxDimension || height > maxDimension) {
+        val halfWidth = width / 2
+        val halfHeight = height / 2
+        while (halfWidth / inSampleSize >= maxDimension || halfHeight / inSampleSize >= maxDimension) {
+            inSampleSize *= 2
+        }
+    }
+    return inSampleSize
 }
